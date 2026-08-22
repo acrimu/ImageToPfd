@@ -217,11 +217,15 @@ class ImageToPdfApp(AppWindow):
             row, from_=start, to=end, variable=variable,
             command=lambda raw, target=variable: self._adjust_selected(target, raw),
         ).pack(side="left", fill="x", expand=True)
-        ttk.Label(row, textvariable=variable, style="Card.TLabel", width=6).pack(side="right", padx=(8, 0))
         ttk.Button(
             row, text="↺", width=2, style="Reset.TButton",
             command=lambda target=variable, value=default: self._reset_adjustment(target, value),
         ).pack(side="right", padx=(6, 0))
+        spinner = ttk.Spinbox(row, from_=start, to=end, increment=1, textvariable=variable, width=5,
+                              command=self._adjust_selected)
+        spinner.pack(side="right", padx=(8, 0))
+        spinner.bind("<Return>", lambda _event: self._adjust_selected())
+        spinner.bind("<FocusOut>", lambda _event: self._adjust_selected())
 
     def _reset_adjustment(self, variable, default) -> None:
         variable.set(default)
