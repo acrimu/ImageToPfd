@@ -142,9 +142,26 @@ class ImageToPdfApp(AppWindow):
         self.editor_title = ttk.Label(controls, text="Select an image to adjust it", style="Card.TLabel",
                                       font=("Segoe UI Semibold", 11))
         self.editor_title.pack(anchor="w", pady=(0, 8))
-        self._adjustment_slider(controls, "Scale", self.image_scale, 25, 200, 100)
+        self._adjustment_slider(controls, "Scale", self.image_scale, 10, 1000, 100)
         self._adjustment_slider(controls, "Horizontal position", self.image_x, -100, 100, 0)
         self._adjustment_slider(controls, "Vertical position", self.image_y, -100, 100, 0)
+        presets = ttk.Frame(controls, style="Card.TFrame")
+        presets.pack(fill="x", pady=(9, 2))
+        for label, mode in (("Fit page", "page"), ("Fit width", "width"),
+                            ("Fit height", "height"), ("Default size", "native")):
+            ttk.Button(presets, text=label, style="Tool.TButton",
+                       command=lambda selected=mode: self._apply_fit(selected)).pack(side="left", padx=(0, 4))
+
+        align_row = ttk.Frame(controls, style="Card.TFrame")
+        align_row.pack(fill="x", pady=(5, 0))
+        ttk.Label(align_row, text="Align", style="Card.TLabel", width=8).pack(side="left")
+        for symbol, horizontal, vertical in (
+            ("↖", -1, -1), ("↑", 0, -1), ("↗", 1, -1),
+            ("←", -1, 0), ("●", 0, 0), ("→", 1, 0),
+            ("↙", -1, 1), ("↓", 0, 1), ("↘", 1, 1),
+        ):
+            ttk.Button(align_row, text=symbol, width=2, style="Reset.TButton",
+                       command=lambda h=horizontal, v=vertical: self._apply_alignment(h, v)).pack(side="left", padx=1)
 
         ttk.Label(right, text="PDF settings", style="Card.TLabel", font=("Segoe UI Semibold", 15)).pack(anchor="w", pady=(0, 18))
         self._field(right, "Page size", ttk.Combobox(right, textvariable=self.page_size, values=list(PAGE_SIZES), state="readonly"))
@@ -208,6 +225,46 @@ class ImageToPdfApp(AppWindow):
 
     def _reset_adjustment(self, variable, default) -> None:
         variable.set(default)
+        self._adjust_selected()
+
+    def _layout_metrics(self, path: Path) -> tuple[int, int, int, int, int, int]:
+        with Image.open(path) as source:
+            image_width, image_height = ImageOps.exif_transpose(source).size
+        page_spec = PAGE_SIZES[self.page_size.get()]
+        if page_spec is None:
+            margin = max(0, int(self.margin.get()))
+            page_width, page_height = image_width + margin * 2, image_height + margin * 2
+        else:
+            page_width, page_height = page_spec
+            if self.orientation.get() == "Landscape":
+                page_width, page_height = page_height, page_width
+            margin = min(max(0, int(self.margin.get())), page_width // 3, page_height // 3)
+        return image_width, image_height, page_width, page_height, page_width - margin * 2, page_height - margin * 2
+
+    def _apply_fit(self, mode: str) -> None:
+        if self.selected_index is None or self.selected_index >= len(self.files):
+            return
+        iw, ih, _pw, _ph, aw, ah = self._layout_metrics(self.files[self.selected_index])
+        base_scale = min(aw / iw, ah / ih)
+        target_scale = {
+            "page": base_scale,
+            "width": aw / iw,
+            "height": ah / ih,
+            "native": 1.0,
+        }[mode]
+        self.image_scale.set(round(target_scale / base_scale * 100))
+        self._adjust_selected()
+
+    def _apply_alignment(self, horizontal: int, vertical: int) -> None:
+        if self.selected_index is None or self.selected_index >= len(self.files):
+            return
+        iw, ih, _pw, _ph, aw, ah = self._layout_metrics(self.files[self.selected_index])
+        base_scale = min(aw / iw, ah / ih) * self.image_scale.get() / 100.0
+        rendered_width, rendered_height = iw * base_scale, ih * base_scale
+        x_value = horizontal * (aw - rendered_width) / aw * 100 if aw else 0
+        y_value = vertical * (ah - rendered_height) / ah * 100 if ah else 0
+        self.image_x.set(round(x_value))
+        self.image_y.set(round(y_value))
         self._adjust_selected()
 
     def _adjustment_for(self, path: Path) -> dict[str, float]:
