@@ -46,7 +46,7 @@ class ImageToPdfApp(AppWindow):
     def __init__(self) -> None:
         super().__init__()
         self.title("Paperstack — Images to PDF")
-        self.geometry("1040x700")
+        self.geometry("1144x700")
         self.minsize(840, 580)
         self.configure(bg="#f5f2eb")
         self.files: list[Path] = []
@@ -176,7 +176,11 @@ class ImageToPdfApp(AppWindow):
         ttk.Label(margin_header, textvariable=self.margin_display, style="Card.TLabel",
                   foreground="#6d736c").pack(side="right", padx=(0, 7))
         ttk.Scale(right, from_=0, to=240, variable=self.margin).pack(fill="x", pady=(7, 17))
-        ttk.Label(right, text="Image quality", style="Card.TLabel").pack(anchor="w")
+        quality_header = ttk.Frame(right, style="Card.TFrame")
+        quality_header.pack(fill="x")
+        ttk.Label(quality_header, text="Image quality", style="Card.TLabel").pack(side="left")
+        ttk.Button(quality_header, text="↺", width=2, style="Reset.TButton",
+                   command=lambda: self.quality.set(90)).pack(side="right")
         ttk.Scale(right, from_=55, to=100, variable=self.quality).pack(fill="x", pady=(7, 4))
         ttk.Label(right, text="Smaller  ←  →  Sharper", style="Card.TLabel", foreground="#7c827b").pack(fill="x")
         ttk.Separator(right).pack(fill="x", pady=22)
