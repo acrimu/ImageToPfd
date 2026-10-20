@@ -11,7 +11,7 @@ Paperstack is a simple desktop app for combining images into a single, polished 
 - Scale, position, align, and fit each image independently
 - Choose from ISO, US, and photo paper sizes, or match each source image
 - Switch between portrait and landscape orientation
-- Adjust page margins and output image quality
+- Adjust page margins, output resolution, and image quality
 - Correct image orientation automatically using EXIF metadata
 - Work entirely offline
 
@@ -78,10 +78,20 @@ On some macOS or Linux systems, use `python3` instead of `python`.
 1. Select **Add images**, or drag images into the file list.
 2. Select an image to preview and adjust its scale, position, fit, or alignment.
 3. Use **Move up**, **Move down**, and **Remove** to organize the pages.
-4. Choose the page size, orientation, margin, and image quality.
+4. Choose the page size, orientation, margin, output resolution, and image quality.
 5. Select **Create PDF**, choose a destination, and save the document.
 
 Each imported image becomes one PDF page, in the order shown in the app.
+
+## PDF size and quality
+
+Paperstack defaults to **150 DPI** and **75% image quality** to keep generated PDFs reasonably small. Use the export controls to choose the balance that fits your needs:
+
+- **150 DPI** — smallest files; recommended for screens, email, and everyday documents
+- **200 DPI** — a balance between file size and print detail
+- **300 DPI** — highest detail; recommended when print quality matters more than file size
+
+Lowering **Image quality** reduces the file size further. Because source formats such as PNG, WebP, and JPEG use different compression methods, the resulting PDF may be larger or smaller than the combined source files.
 
 ## Custom paper sizes
 

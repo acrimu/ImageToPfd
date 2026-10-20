@@ -20,6 +20,8 @@ except ImportError:
 
 IMAGE_TYPES = [("Image files", "*.png *.jpg *.jpeg *.webp *.bmp *.tif *.tiff"), ("All files", "*.*")]
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+BASE_DPI = 300
+MAX_EXPORT_PIXELS = 20_000_000
 
 
 def load_page_sizes() -> dict[str, tuple[int, int] | None]:
@@ -46,8 +48,8 @@ class ImageToPdfApp(AppWindow):
     def __init__(self) -> None:
         super().__init__()
         self.title("Paperstack — Images to PDF")
-        self.geometry("1144x700")
-        self.minsize(840, 580)
+        self.geometry("1144x800")
+        self.minsize(840, 680)
         self.configure(bg="#f5f2eb")
         self.files: list[Path] = []
         self.thumbs: list[ImageTk.PhotoImage] = []
@@ -62,7 +64,8 @@ class ImageToPdfApp(AppWindow):
         self.page_dimensions = tk.StringVar(value="210.0 × 297.0 mm / 8.27 × 11.69 in")
         self.margin = tk.IntVar(value=0)
         self.margin_display = tk.StringVar(value="0.0 mm / 0.00 in")
-        self.quality = tk.IntVar(value=90)
+        self.quality = tk.IntVar(value=75)
+        self.output_dpi = tk.IntVar(value=150)
         self.status = tk.StringVar(value="Add images to begin")
         self._style()
         self._build()
@@ -180,9 +183,19 @@ class ImageToPdfApp(AppWindow):
         quality_header.pack(fill="x")
         ttk.Label(quality_header, text="Image quality", style="Card.TLabel").pack(side="left")
         ttk.Button(quality_header, text="↺", width=2, style="Reset.TButton",
-                   command=lambda: self.quality.set(90)).pack(side="right")
-        ttk.Scale(right, from_=55, to=100, variable=self.quality).pack(fill="x", pady=(7, 4))
+                   command=lambda: self.quality.set(75)).pack(side="right")
+        ttk.Label(quality_header, textvariable=self.quality, style="Card.TLabel",
+                  foreground="#6d736c").pack(side="right", padx=(0, 7))
+        ttk.Scale(
+            right, from_=35, to=95, variable=self.quality,
+            command=lambda raw: self.quality.set(round(float(raw))),
+        ).pack(fill="x", pady=(7, 4))
         ttk.Label(right, text="Smaller  ←  →  Sharper", style="Card.TLabel", foreground="#7c827b").pack(fill="x")
+        self._field(
+            right,
+            "Output resolution",
+            ttk.Combobox(right, textvariable=self.output_dpi, values=[150, 200, 300], state="readonly"),
+        )
         ttk.Separator(right).pack(fill="x", pady=22)
         ttk.Label(right, textvariable=self.status, style="Card.TLabel", foreground="#6d736c", wraplength=235).pack(anchor="w")
         self.export_btn = ttk.Button(right, text="Create PDF", style="Primary.TButton", command=self.export_pdf, state="disabled")
@@ -195,7 +208,7 @@ class ImageToPdfApp(AppWindow):
 
     def _update_margin_display(self) -> None:
         pixels = round(float(self.margin.get()))
-        inches = pixels / 300.0
+        inches = pixels / BASE_DPI
         millimetres = inches * 25.4
         self.margin_display.set(f"{millimetres:.1f} mm / {inches:.2f} in")
 
@@ -207,7 +220,7 @@ class ImageToPdfApp(AppWindow):
         width, height = dimensions
         if self.orientation.get() == "Landscape":
             width, height = height, width
-        width_in, height_in = width / 300.0, height / 300.0
+        width_in, height_in = width / BASE_DPI, height / BASE_DPI
         self.page_dimensions.set(
             f"{width_in * 25.4:.1f} × {height_in * 25.4:.1f} mm / "
             f"{width_in:.2f} × {height_in:.2f} in"
@@ -412,6 +425,16 @@ class ImageToPdfApp(AppWindow):
             if self.orientation.get() == "Landscape":
                 width, height = height, width
             margin = min(max(0, int(self.margin.get())), width // 3, height // 3)
+
+        # A small file on disk can still contain an extremely large image once
+        # decoded. Limit the rendered page area to prevent multi-gigabyte PDFs
+        # and excessive memory use, while preserving the page's aspect ratio.
+        if width * height > MAX_EXPORT_PIXELS:
+            reduction = (MAX_EXPORT_PIXELS / (width * height)) ** 0.5
+            width = max(1, round(width * reduction))
+            height = max(1, round(height * reduction))
+            margin = round(margin * reduction)
+
         available = (width - margin * 2, height - margin * 2)
         # Fit to the available area in either direction. `thumbnail()` only
         # shrinks images, so small images previously remained small on the page.
@@ -440,10 +463,22 @@ class ImageToPdfApp(AppWindow):
         self.update_idletasks()
         pages: list[Image.Image] = []
         try:
+            output_dpi = int(self.output_dpi.get())
+            output_scale = output_dpi / BASE_DPI
             for path in self.files:
-                pages.append(self._make_page(path))
+                page = self._make_page(path)
+                if output_scale != 1:
+                    output_size = (
+                        max(1, round(page.width * output_scale)),
+                        max(1, round(page.height * output_scale)),
+                    )
+                    resized_page = page.resize(output_size, Image.Resampling.LANCZOS)
+                    page.close()
+                    page = resized_page
+                pages.append(page)
             pages[0].save(destination, "PDF", save_all=True, append_images=pages[1:],
-                          resolution=300.0, quality=int(self.quality.get()), optimize=True)
+                          resolution=float(output_dpi), quality=int(self.quality.get()),
+                          subsampling=2, optimize=True)
             size_mb = os.path.getsize(destination) / (1024 * 1024)
             self.status.set(f"Saved {len(pages)} pages · {size_mb:.1f} MB")
             if messagebox.askyesno("PDF created", f"Your PDF was saved successfully.\n\n{destination}\n\nOpen it now?"):
