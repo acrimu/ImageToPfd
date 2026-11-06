@@ -80,6 +80,30 @@ python image_to_pdf.py
 On some macOS or Linux systems, use `python3` instead of `python`.
 The app version appears in the window title and is maintained in `app_version.py` to match its Git tag.
 
+## Build a standalone app
+
+Builds must be made on the operating system they target; PyInstaller does not cross-compile between macOS, Windows, and Linux.
+
+1. Install Python 3.10 or newer and the build dependencies:
+
+   ```bash
+   python3 -m pip install -r requirements-build.txt
+   ```
+
+   On Windows, use `py -3 -m pip install -r requirements-build.txt` instead.
+
+2. Run the script for your operating system from the project folder:
+
+   - **macOS:** `./build_macos.sh` (creates `dist/Paperstack-v<version>.app`)
+   - **Linux:** `./build_linux.sh` (creates `dist/Paperstack-v<version>/`)
+   - **Windows:** `build_windows.bat` (creates `dist\Paperstack-v<version>\`)
+
+   The macOS and Linux scripts may need to be made executable once with `chmod +x build_macos.sh build_linux.sh`.
+   On Linux, install the system Tkinter package first if it is missing (for example, `sudo apt install python3-tk` on Ubuntu or Debian).
+   Linux builds depend on the build system's glibc version, so build on the oldest Linux distribution you intend to support.
+
+The output includes the app and its runtime files. Distribute the complete app bundle or folder, not just the executable inside it.
+
 ## Usage
 
 1. Select **Add images**, or drag images into the file list.
