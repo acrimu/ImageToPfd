@@ -65,13 +65,20 @@ On Windows, double-click `run_app.bat` or run:
 .\run_app.bat
 ```
 
-On any supported platform, start the Python script directly:
+On macOS or Linux, run:
+
+```bash
+./run_app.sh
+```
+
+If needed, make the script executable with `chmod +x run_app.sh`. You can also start the Python script directly on any supported platform:
 
 ```bash
 python image_to_pdf.py
 ```
 
 On some macOS or Linux systems, use `python3` instead of `python`.
+The app version appears in the window title and is maintained in `app_version.py` to match its Git tag.
 
 ## Usage
 

@@ -10,6 +10,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageOps, ImageTk
 
+from app_version import __version__
+
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
     AppWindow = TkinterDnD.Tk
@@ -47,7 +49,7 @@ PAGE_SIZES = load_page_sizes()
 class ImageToPdfApp(AppWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Paperstack — Images to PDF")
+        self.title(f"Paperstack — Images to PDF v{__version__}")
         self.geometry("1144x800")
         self.minsize(840, 680)
         self.configure(bg="#f5f2eb")
